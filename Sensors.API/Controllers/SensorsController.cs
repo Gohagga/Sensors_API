@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sensors.API.Models;
 using Sensors.Data.Models;
 using Sensors.Data.Repos;
+using Sensors.Data.Services;
 
 namespace Sensors.API.Controllers
 {
@@ -11,26 +12,16 @@ namespace Sensors.API.Controllers
     {
         private readonly ILogger<SensorsController> _logger;
         private readonly SensorRepository _repo;
-        
-        //private static List<SensorInfo>? _sensorInfos;
-        //private static Dictionary<string, SensorData>? _sensorData;
+        private readonly PredictionService _predictionService;
 
         public SensorsController(
             ILogger<SensorsController> logger,
-            SensorRepository repo)
+            SensorRepository repo,
+            PredictionService predictionService)
         {
             _logger = logger;
             _repo = repo;
-
-            //_sensorInfos ??= Enumerable.Range(1, 5).Select(index =>
-            //    new SensorInfo(
-            //        Id: Guid.NewGuid().ToString(),
-            //        Label: $"SENZOR{index}"))
-            //    .ToList();
-
-            //_sensorData ??= _sensorInfos.ToDictionary(k => k.Id, v => new SensorData(
-            //    SensorId: v.Id,
-            //    HitsPerPeriod: Enumerable.Range(0, 10000).Select(y => Random.Shared.Next(0, 40)).ToList()));
+            _predictionService = predictionService;
         }
 
         [HttpGet("get-sensors")]
@@ -46,63 +37,24 @@ namespace Sensors.API.Controllers
         {
             var retVal = new GetSensorDataResponse();
 
-            retVal.AddRange(_repo.GetSensorData(request.From, request.To, request.Period, request.SensorsToReturn));
+            if (request.PerfectlyPredictedData)
+            {
+                retVal.AddRange(_predictionService.GetPredictions(request.From, request.To, request.Period, request.SensorsToReturn));
+            }
+            else
+            {
+                retVal.AddRange(_repo.GetSensorData(request.From, request.To, request.Period, request.SensorsToReturn));
+            }
 
             return retVal;
         }
 
-        //[HttpPost("get-sensor-data")]
-        //public ActionResult<GetSensorDataResponse> GetSensorData([FromBody] GetSensorDataRequest request)
-        //{
-        //    var retVal = new GetSensorDataResponse();
-
-        //    foreach (var sensorId in request.SensorsToReturn)
-        //    {
-        //        var data = _sensorData[sensorId];
-
-        //        var hitsPerPeriod = request.Period switch
-        //        {
-        //            TimePeriod.Minute => data.HitsPerPeriod,
-        //            TimePeriod.Hour => SumEveryN(data.HitsPerPeriod, 60),
-        //            TimePeriod.Day => SumEveryN(data.HitsPerPeriod, 1440),
-        //            TimePeriod.Month => SumEveryN(data.HitsPerPeriod, 43200),
-        //            TimePeriod.Quarter => SumEveryN(data.HitsPerPeriod, 129600),
-        //            _ => data.HitsPerPeriod
-        //        };
-
-        //        var sensorData = new SensorData(
-        //            SensorId: data.SensorId,
-        //            HitsPerPeriod: hitsPerPeriod);
-
-        //        retVal.Add(sensorData);
-        //    }
-
-        //    return retVal;
-        //}
-
-        private static List<int> SumEveryN(List<int> data, int n)
+        [HttpPost("calculate-predictions")]
+        public ActionResult CalculatePredictions()
         {
-            List<int> result = new List<int>();
-            int sum = 0;
+            _predictionService.CalculatePredictions();
 
-            for (int i = 0; i < data.Count; i++)
-            {
-                sum += data[i];
-
-                if ((i + 1) % n == 0)
-                {
-                    result.Add(sum);
-                    sum = 0;
-                }
-            }
-
-            // If there's a remainder, add it to the results
-            if (data.Count % n != 0)
-            {
-                result.Add(sum);
-            }
-
-            return result;
+            return this.Ok();
         }
     }
 }

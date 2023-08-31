@@ -28,7 +28,7 @@ namespace Sensors.Data
 
     public class CounterQuery
     {
-        public Guid DeviceId { get; set; }
+        public string DeviceId { get; set; }
         public string Name { get; set; }
         public int Count { get; set; }
         public DateTime CountDateTime { get; set; }

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Sensors.Data.Repos
 {
@@ -33,7 +34,7 @@ namespace Sensors.Data.Repos
             var data = GetDevices(db)
                 .Select(x => new SensorInfo
                 {
-                    Id = x.Id.ToString(),
+                    Id = x.Code,
                     Label = x.Name
                 })
                 .ToList();
@@ -59,17 +60,17 @@ namespace Sensors.Data.Repos
 
             var commandText = @$"
                 SELECT
-	                d.Id as deviceId,
+	                d.Code as deviceId,
 	                d.[Name] as name,
 	                count(c.Id) as count,
 	                dateadd({periodName}, datediff({periodName}, 0, c.Created), 0) as countDatetime
                 FROM dbo.Devices d
                 LEFT JOIN Counters c ON c.DeviceId = d.Id
-                WHERE d.Id IN ({sensorIdList})
+                WHERE d.Code IN ({sensorIdList})
                     AND c.Created > @from
                     AND c.Created < @to
                 group by
-	                d.Id,
+	                d.Code,
 	                d.[Name],
 	                dateadd({periodName}, datediff({periodName}, 0, c.Created), 0)
                 ORDER BY countDatetime";
@@ -88,8 +89,23 @@ namespace Sensors.Data.Repos
                     sensorData = sensors[deviceId] = new SensorData()
                     {
                         SensorId = deviceId,
-                        HitsPerPeriod = new List<int>()
+                        HitsPerPeriod = new List<int>(),
+                        LastDateTime = from
                     };
+
+                while (sensorData.LastDateTime < row.CountDateTime)
+                {
+                    sensorData.HitsPerPeriod.Add(0);
+                    sensorData.LastDateTime = period switch
+                    {
+                        TimePeriod.Minute => sensorData.LastDateTime.AddMinutes(1),
+                        TimePeriod.Hour => sensorData.LastDateTime.AddHours(1),
+                        TimePeriod.Day => sensorData.LastDateTime.AddDays(1),
+                        TimePeriod.Month => sensorData.LastDateTime.AddMonths(1),
+                        TimePeriod.Quarter => throw new NotImplementedException(),
+                        _ => sensorData.LastDateTime.AddMinutes(1)
+                    };
+                }
 
                 sensorData.HitsPerPeriod.Add(row.Count);
             }

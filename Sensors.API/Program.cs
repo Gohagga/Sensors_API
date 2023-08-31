@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sensors.Data;
 using Sensors.Data.Repos;
+using Sensors.Data.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ builder.Services.AddDbContextFactory<SensorsDbContext>(options => options
     }), ServiceLifetime.Singleton);
 
 builder.Services.AddSingleton<SensorRepository>();
+builder.Services.AddSingleton<PredictionService>();
 
 var app = builder.Build();
 

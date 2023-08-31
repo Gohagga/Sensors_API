@@ -10,6 +10,8 @@
     {
         public List<int> HitsPerPeriod { get; set; }
         public string SensorId { get; set; }
+
+        public DateTime LastDateTime { get; set; }
     }
 
     public enum TimePeriod
